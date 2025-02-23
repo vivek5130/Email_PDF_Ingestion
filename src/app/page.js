@@ -1,95 +1,157 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+// /app/page.jsx
+"use client"
+import React, { useState, useEffect } from 'react';
 
-export default function Home() {
+export default function EmailConfigPage() {
+  const [configs, setConfigs] = useState([]);
+  const [form, setForm] = useState({
+    emailAddress: '',
+    connectionType: '',
+    username: '',
+    password: '',
+    host: '',
+  });
+  const [editId, setEditId] = useState(null);
+
+  useEffect(() => {
+    fetchConfigs();
+  }, []);
+
+  const fetchConfigs = async () => {
+    const res = await fetch('/api/email-ingestion/config');
+    const data = await res.json();
+    setConfigs(data.configs);
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const url = editId
+      ? `/api/email-ingestion/config?id=${editId}`
+      : '/api/email-ingestion/config';
+    const method = editId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) {
+      await fetchConfigs();
+      setForm({
+        emailAddress: '',
+        connectionType: '',
+        username: '',
+        password: '',
+        host: '',
+      });
+      setEditId(null);
+      // After saving a configuration, trigger the email check.
+      await fetch('/api/email-ingestion/check-emails', { method: 'POST' });
+    }
+  };
+
+  const handleEdit = (config) => {
+    setForm({
+      emailAddress: config.email,
+      connectionType: config.connectionType,
+      username: config.username,  
+      password: config.password,
+      host: config.host,
+    });
+    setEditId(config.id);
+  };
+
+  const handleDelete = async (id) => {
+    await fetch(`/api/email-ingestion/config?id=${id}`, { method: 'DELETE' });
+    fetchConfigs();
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Email Configuration</h1>
+      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Email Address: </label>
+          <input
+            type="email"
+            name="emailAddress"
+            value={form.emailAddress}
+            onChange={handleChange}
+            required
+          />
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div style={{ marginBottom: '10px' }}>
+          <label>Connection Type: </label>
+          <select
+            name="connectionType"
+            value={form.connectionType}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select...</option>
+            <option value="IMAP">IMAP</option>
+            <option value="POP3">POP3</option>
+            <option value="Gmail API">Gmail API</option>
+            <option value="Outlook/Graph API">Outlook/Graph API</option>
+          </select>
+        </div>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Username: </label>
+          <input
+            type="text"
+            name="username"
+            value={form.username}
+            onChange={handleChange}
           />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        </div>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Password/Token: </label>
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
           />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+        </div>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Host: </label>
+          <input
+            type="text"
+            name="host"
+            value={form.host}
+            onChange={handleChange}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+        <button type="submit">
+          {editId ? 'Update Configuration' : 'Add Configuration'}
+        </button>
+      </form>
+
+      <h2>Saved Configurations</h2>
+      {configs.length === 0 && <p>No email configurations added yet.</p>}
+      <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+        {configs.map((config) => (
+          <li
+            key={config.id}
+            style={{
+              marginBottom: '15px',
+              borderBottom: '1px solid #ccc',
+              paddingBottom: '10px',
+            }}
+          >
+            <strong>{config.emailAddress}</strong> - {config.connectionType}
+            <div>Username: {config.username}</div>
+            <div>Host: {config.host}</div>
+            <button onClick={() => handleEdit(config)} style={{ marginRight: '10px' }}>
+              Edit
+            </button>
+            <button onClick={() => handleDelete(config.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
