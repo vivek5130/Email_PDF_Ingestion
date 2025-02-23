@@ -7,11 +7,12 @@ import path from 'path';
 const prisma = new PrismaClient();
 const PDF_DIR = "./pdfs/";
 
+// Ensure the PDF directory exists
 if (!fs.existsSync(PDF_DIR)) {
-    fs.mkdirSync(PDF_DIR, { recursive: true });
-  }
+  fs.mkdirSync(PDF_DIR, { recursive: true });
+}
 
-// Helper function to recursively extract attachments from the IMAP message structure
+// Helper function to recursively extract attachments from a message structure
 function getAttachments(struct) {
   let attachments = [];
   for (const part of struct) {
@@ -42,12 +43,12 @@ export async function POST(request) {
         host: config.host,
         port: 993,
         tls: true,
-        tlsOptions: { rejectUnauthorized: false } // For self-signed certs; remove in production.
+        tlsOptions: { rejectUnauthorized: false }
       });
 
       imap.once('ready', () => {
         console.log(`IMAP connection ready for config: ${config.id}`);
-        imap.openBox('INBOX', false, async (err, box) => {
+        imap.openBox('INBOX', false, (err, box) => {
           if (err) {
             console.error(`Error opening INBOX for config: ${config.id}`, err);
             imap.end();
@@ -76,7 +77,7 @@ export async function POST(request) {
 
               msg.on('body', (stream) => {
                 let buffer = '';
-                stream.on('data', chunk => (buffer += chunk.toString()));
+                stream.on('data', (chunk) => buffer += chunk.toString());
                 stream.on('end', () => {
                   fromAddress = buffer.match(/From: (.*)/i)?.[1] || "Unknown";
                   subject = buffer.match(/Subject: (.*)/i)?.[1] || "No Subject";
@@ -85,44 +86,57 @@ export async function POST(request) {
                 });
               });
 
-              msg.on('attributes', async (attrs) => {
-                // Use recursive helper to find attachments
+              msg.on('attributes', (attrs) => {
                 const attachments = getAttachments(attrs.struct);
                 console.log(`Email #${seqno} has ${attachments.length} attachment(s)`);
-                
-                for (const att of attachments) {
+                attachments.forEach(att => {
                   const fileName = att.disposition.params.filename;
-                  if (!fileName.endsWith('.pdf')) continue;
+                  if (!fileName.endsWith('.pdf')) return;
 
                   console.log(`Processing PDF attachment: ${fileName} from email #${seqno}`);
                   const filePath = path.join(PDF_DIR, fileName);
-                  const fetchAttachment = imap.fetch(attrs.uid, { bodies: [att.partID], struct: true });
 
+                  // Disable automatic decoding by setting decode: false
+                  const fetchAttachment = imap.fetch(attrs.uid, {
+                    bodies: [att.partID],
+                    markSeen: true,
+                    decode: false
+                  });
                   fetchAttachment.on('message', (attachmentMsg) => {
                     attachmentMsg.on('body', (stream) => {
-                      stream.pipe(fs.createWriteStream(filePath));
-                      console.log(`Downloading and saving attachment: ${fileName} to ${filePath}`);
-                    });
-
-                    attachmentMsg.once('end', async () => {
-                      try {
-                        await prisma.pdfMetadata.create({
-                          data: {
-                            emailConfigId: config.id,
-                            fromAddress,
-                            dateReceived,
-                            subject,
-                            attachmentFileName: fileName,
-                            filePath,
-                          },
+                      let data = '';
+                      stream.on('data', (chunk) => {
+                        data += chunk.toString('utf8'); // accumulate as base64 string
+                      });
+                      stream.on('end', async () => {
+                        // Manually decode the accumulated base64 string into a Buffer
+                        const buffer = Buffer.from(data, 'base64');
+                        fs.writeFile(filePath, buffer, async (err) => {
+                          if (err) {
+                            console.error(`Error writing file ${fileName}:`, err);
+                          } else {
+                            console.log(`Finished writing file: ${fileName}`);
+                            try {
+                              await prisma.pdfMetadata.create({
+                                data: {
+                                  emailConfigId: config.id,
+                                  fromAddress,
+                                  dateReceived,
+                                  subject,
+                                  attachmentFileName: fileName,
+                                  filePath,
+                                },
+                              });
+                              console.log(`Saved PDF metadata for attachment: ${fileName}`);
+                            } catch (dbErr) {
+                              console.error(`Error saving PDF metadata for ${fileName}:`, dbErr);
+                            }
+                          }
                         });
-                        console.log(`Saved PDF metadata for attachment: ${fileName}`);
-                      } catch (dbErr) {
-                        console.error(`Error saving PDF metadata for ${fileName}:`, dbErr);
-                      }
+                      });
                     });
                   });
-                }
+                });
               });
             });
             fetch.once('end', () => {
@@ -133,7 +147,9 @@ export async function POST(request) {
         });
       });
 
-      imap.once('error', err => console.error(`IMAP Error for config: ${config.id}`, err));
+      imap.once('error', (err) =>
+        console.error(`IMAP Error for config: ${config.id}`, err)
+      );
       imap.connect();
     }
 
