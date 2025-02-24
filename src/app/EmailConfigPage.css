@@ -1,0 +1,110 @@
+.container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  h1, h2 {
+    text-align: center;
+    color: #333;
+  }
+  
+  form {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  input, select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  button {
+    background: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+  }
+  
+  button:hover {
+    background: #0056b3;
+  }
+  
+  .config-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .config-item {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+  }
+  
+  .config-item strong {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 5px;
+  }
+  
+  .config-item div {
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #555;
+  }
+  
+  .action-buttons {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .edit-btn {
+    background: #ffc107;
+  }
+  
+  .edit-btn:hover {
+    background: #e0a800;
+  }
+  
+  .delete-btn {
+    background: #dc3545;
+  }
+  
+  .delete-btn:hover {
+    background: #c82333;
+  }
+  
+  .check-email-section {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+  pre {
+    background: #f4f4f4;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+  }
+  

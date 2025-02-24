@@ -1,5 +1,6 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from 'react';
+import './EmailConfigPage.css'; // Importing the CSS file
 
 export default function EmailConfigPage() {
   const [configs, setConfigs] = useState([]);
@@ -11,6 +12,8 @@ export default function EmailConfigPage() {
     host: '',
   });
   const [editId, setEditId] = useState(null);
+  const [checkResponse, setCheckResponse] = useState(null);
+  const [loadingCheck, setLoadingCheck] = useState(false);
 
   useEffect(() => {
     fetchConfigs();
@@ -47,7 +50,6 @@ export default function EmailConfigPage() {
         host: '',
       });
       setEditId(null);
-      // After saving a configuration, trigger the email check.
       await fetch('/api/email-ingestion/check-emails', { method: 'POST' });
     }
   };
@@ -68,28 +70,31 @@ export default function EmailConfigPage() {
     fetchConfigs();
   };
 
+  const handleCheckEmails = async () => {
+    setLoadingCheck(true);
+    setCheckResponse(null);
+    try {
+      const res = await fetch('/api/email-ingestion/check-emails', { method: 'POST' });
+      const data = await res.json();
+      setCheckResponse(data);
+    } catch (err) {
+      console.error(err);
+      setCheckResponse({ error: 'Failed to check emails' });
+    }
+    setLoadingCheck(false);
+  };
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div className="container">
       <h1>Email Configuration</h1>
-      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
-        <div style={{ marginBottom: '10px' }}>
-          <label>Email Address: </label>
-          <input
-            type="email"
-            name="emailAddress"
-            value={form.emailAddress}
-            onChange={handleChange}
-            required
-          />
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Email Address:</label>
+          <input type="email" name="emailAddress" value={form.emailAddress} onChange={handleChange} required />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label>Connection Type: </label>
-          <select
-            name="connectionType"
-            value={form.connectionType}
-            onChange={handleChange}
-            required
-          >
+        <div className="form-group">
+          <label>Connection Type:</label>
+          <select name="connectionType" value={form.connectionType} onChange={handleChange} required>
             <option value="">Select...</option>
             <option value="IMAP">IMAP</option>
             <option value="POP3">POP3</option>
@@ -97,60 +102,44 @@ export default function EmailConfigPage() {
             <option value="Outlook/Graph API">Outlook/Graph API</option>
           </select>
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label>Username: </label>
-          <input
-            type="text"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-          />
+        <div className="form-group">
+          <label>Username:</label>
+          <input type="text" name="username" value={form.username} onChange={handleChange} />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label>Password/Token: </label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-          />
+        <div className="form-group">
+          <label>Password/Token:</label>
+          <input type="password" name="password" value={form.password} onChange={handleChange} />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label>Host: </label>
-          <input
-            type="text"
-            name="host"
-            value={form.host}
-            onChange={handleChange}
-          />
+        <div className="form-group">
+          <label>Host:</label>
+          <input type="text" name="host" value={form.host} onChange={handleChange} />
         </div>
-        <button type="submit">
-          {editId ? 'Update Configuration' : 'Add Configuration'}
-        </button>
+        <button type="submit">{editId ? 'Update Configuration' : 'Add Configuration'}</button>
       </form>
 
       <h2>Saved Configurations</h2>
       {configs.length === 0 && <p>No email configurations added yet.</p>}
-      <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+      <ul className="config-list">
         {configs.map((config) => (
-          <li
-            key={config.id}
-            style={{
-              marginBottom: '15px',
-              borderBottom: '1px solid #ccc',
-              paddingBottom: '10px',
-            }}
-          >
+          <li key={config.id} className="config-item">
             <strong>{config.emailAddress}</strong> - {config.connectionType}
             <div>Username: {config.username}</div>
             <div>Host: {config.host}</div>
-            <button onClick={() => handleEdit(config)} style={{ marginRight: '10px' }}>
-              Edit
-            </button>
-            <button onClick={() => handleDelete(config.id)}>Delete</button>
+            <div className="action-buttons">
+              <button className="edit-btn" onClick={() => handleEdit(config)}>Edit</button>
+              <button className="delete-btn" onClick={() => handleDelete(config.id)}>Delete</button>
+            </div>
           </li>
         ))}
       </ul>
+
+      <div className="check-email-section">
+        <h2>Check Inbox</h2>
+        <button onClick={handleCheckEmails} disabled={loadingCheck}>
+          {loadingCheck ? 'Checking...' : 'Check Inbox Now'}
+        </button>
+        {checkResponse && <pre>{JSON.stringify(checkResponse, null, 2)}</pre>}
+      </div>
     </div>
   );
 }
