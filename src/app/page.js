@@ -65,11 +65,33 @@ export default function EmailConfigPage() {
     setEditId(config.id);
   };
 
+  // const handleDelete = async (id) => {
+  //   console.log("Deleting config with ID:", id); 
+  //   if (!id) {
+  //     console.error("Error: ID is undefined or null");
+  //     return;
+  //   }
+  //   await fetch(`/api/email-ingestion/config?id=${id}`, { method: 'DELETE' });
+  //   fetchConfigs();
+  // };
+  
   const handleDelete = async (id) => {
-    await fetch(`/api/email-ingestion/config?id=${id}`, { method: 'DELETE' });
-    fetchConfigs();
+    if (!id) return console.error("Invalid ID for deletion");
+  
+    try {
+      const response = await fetch(`/api/email-ingestion/config?id=${id}`, { method: "DELETE" });
+  
+      if (response.ok) {
+        fetchConfigs(); // Refresh the list after successful deletion
+      } else {
+        const errorData = await response.json();
+        console.error("Delete failed:", errorData.error);
+      }
+    } catch (error) {
+      console.error("Error deleting configuration:", error);
+    }
   };
-
+  
   const handleCheckEmails = async () => {
     setLoadingCheck(true);
     setCheckResponse(null);
